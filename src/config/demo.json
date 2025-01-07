@@ -1,0 +1,47 @@
+{
+   "general_config": {
+      "name": "Example Config",
+      "unix_dob": 0,
+      "hardware_id": 305419896
+   },
+   "i2c_config": [
+      {
+         "name": "TempHum-Sensor-01",
+         "sensor_type": 69
+      },
+      {
+         "name": "SoilMoist-Sensor-01TooLong",
+         "sensor_type": 2
+      }
+   ],
+   "adc_config": [
+      {
+         "name": "ADC-Sensor-01",
+         "max_val": 100,
+         "min_val": 0,
+         "max_map_val": 3000,
+         "min_map_val": 200
+      },
+      {
+         "name": "ADC-Sensor-01",
+         "max_val": 24,
+         "min_val": -10,
+         "max_map_val": 1234,
+         "min_map_val": 123
+      },
+      {
+         "name": "ADC-Sensor-03",
+         "max_val": 100,
+         "min_val": 0,
+         "max_map_val": 3000,
+         "min_map_val": 200
+      },
+      {
+         "name": "ADC-Sensor-04",
+         "max_val": 24,
+         "min_val": -10,
+         "max_map_val": 1234,
+         "min_map_val": 123
+      }
+   ]
+}
