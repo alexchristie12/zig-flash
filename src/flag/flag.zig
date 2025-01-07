@@ -25,7 +25,7 @@ pub const FlashOption = union(enum) {
 // - zig-flash verify
 
 /// Get the option to control what the Flashing CLI uses.
-pub fn getOption() FlagParseError!FlashOption {
+pub fn get_option() FlagParseError!FlashOption {
     // Make a buffer allocator
     var buffer: [500]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buffer);

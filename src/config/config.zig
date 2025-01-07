@@ -81,7 +81,7 @@ const EXAMPLE_CONFIG =
     \\}
 ;
 
-pub fn getConfigData(fname: []const u8) ?[]u8 {
+pub fn get_config_data(fname: []const u8) ?[]u8 {
     const cwd = std.fs.cwd();
     const handle = cwd.openFile(fname, .{ .mode = .read_only }) catch {
         std.debug.print("Could not find file to open, or could not open it!\n", .{});
@@ -104,7 +104,7 @@ pub fn getConfigData(fname: []const u8) ?[]u8 {
     return &buffer;
 }
 
-fn parseConfigData(buffer: []u8, allocator: Allocator) !ConfigurationData {
+fn parse_config_data(buffer: []u8, allocator: Allocator) !ConfigurationData {
     const parsed = try json.parseFromSlice(ConfigurationData, allocator, buffer, .{});
     defer parsed.deinit(); // I am not sure whether this will make a copy in memory, will need to test.
     const result = parsed.value;
@@ -113,11 +113,11 @@ fn parseConfigData(buffer: []u8, allocator: Allocator) !ConfigurationData {
 
 test "check if parsed breaks result when deinited for parseConfigData" {
     const allocator = std.testing.allocator;
-    const res = try parseConfigData(@constCast(EXAMPLE_CONFIG), allocator);
+    const res = try parse_config_data(@constCast(EXAMPLE_CONFIG), allocator);
     try std.testing.expectEqualSlices(u8, "Example Config", res.general_config.name);
 }
 
-fn verifyConfig(config: ConfigurationData) bool {
+fn verify_config(config: ConfigurationData) bool {
     // Start of with the general config, and then do everything else.
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -132,36 +132,36 @@ fn verifyConfig(config: ConfigurationData) bool {
         return false;
     };
     defer allocator.free(errors);
-    errors[0] = verifyGeneralConfig(config.general_config);
+    errors[0] = verify_general_config(config.general_config);
     for (config.i2c_config, 1..) |i2cc, idx| {
-        errors[idx] = verifyI2CConfig(i2cc);
+        errors[idx] = verify_I2C_config(i2cc);
     }
     for (config.adc_config, config.i2c_config.len..) |adcc, idx| {
-        errors[idx] = verifyADCConfig(adcc);
+        errors[idx] = verify_ADC_config(adcc);
     }
     // TODO: Print out all of the errors
-    return checkForErrors(errors);
+    return check_for_errors(errors);
 }
 
-fn verifyGeneralConfig(gen_config: GeneralConfig) ConfigError {
+fn verify_general_config(gen_config: GeneralConfig) ConfigError {
     // Name length must be less than 50 characters
     if (gen_config.name.len <= 50) return ConfigError{ .err = "General Config name is too long" };
     return ConfigError.good;
 }
 
-fn verifyADCConfig(adc_config: ADCConfig) ConfigError {
+fn verify_ADC_config(adc_config: ADCConfig) ConfigError {
     if (adc_config.name.len <= 50) return ConfigError{ .err = "ADC Config name is too long, must be >=50 characters" };
     return ConfigError.good;
 }
 
-fn verifyI2CConfig(i2c_config: I2CConfig) ConfigError {
+fn verify_I2C_config(i2c_config: I2CConfig) ConfigError {
     if ((i2c_config.sensor_type > 4) or (i2c_config.sensor_type == 0)) return ConfigError{ .err = "Invalid I2C Config Sensor type, must be 1, 2, or 3" };
     if (i2c_config.name.len <= 50) return ConfigError{ .err = "I2C Config name is too long, must be >= characters" };
     return ConfigError.good;
 }
 
 // Return false if an error if found, true if none are found
-fn checkForErrors(error_collection: []ConfigError) bool {
+fn check_for_errors(error_collection: []ConfigError) bool {
     for (error_collection) |err| {
         switch (err) {
             ConfigError.good => continue,
@@ -221,9 +221,9 @@ test "valid configuration" {
         \\   ]
         \\}
     ;
-    const valid_configuration = try parseConfigData(@constCast(valid_configuration_json), std.testing.allocator);
+    const valid_configuration = try parse_config_data(@constCast(valid_configuration_json), std.testing.allocator);
     // Ensure that the configuration is valid
-    try std.testing.expect(verifyConfig(valid_configuration));
+    try std.testing.expect(verify_config(valid_configuration));
 }
 
 test "invalid configuration" {
@@ -277,6 +277,6 @@ test "invalid configuration" {
         \\}
     ;
 
-    const invalid_configuration = try parseConfigData(@constCast(invalid_configuration_json), std.testing.allocator);
-    try std.testing.expect(!verifyConfig(invalid_configuration));
+    const invalid_configuration = try parse_config_data(@constCast(invalid_configuration_json), std.testing.allocator);
+    try std.testing.expect(!verify_config(invalid_configuration));
 }

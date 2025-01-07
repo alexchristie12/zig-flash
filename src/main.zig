@@ -10,7 +10,7 @@ pub fn main() !void {
     try stdout.print("Run `zig build test` to run the tests.\n", .{});
 
     // Try the command line
-    const option = flag.getOption() catch {
+    const option = flag.get_option() catch {
         try stdout.print("Option getter returned an error", .{});
         try bw.flush(); // don't forget to flush!
         return;
@@ -20,7 +20,7 @@ pub fn main() !void {
     try bw.flush(); // don't forget to flush!
 
     // Now see if I can open that file.
-    const data = parser.getConfigData("./src/config/demo.json");
+    const data = parser.get_config_data("./src/config/demo.json");
     if (data == null) {
         std.debug.print("Could not open file", .{});
     }
