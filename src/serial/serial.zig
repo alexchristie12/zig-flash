@@ -1153,8 +1153,8 @@ extern "kernel32" fn SetCommState(hFile: std.os.windows.HANDLE, lpDCB: *DCB) cal
 test "iterate ports" {
     var it = try list();
     while (try it.next()) |port| {
-        _ = port;
-        // std.debug.print("{s} (file: {s}, driver: {s})\n", .{ port.display_name, port.file_name, port.driver });
+        // _ = port;
+        std.debug.print("{s} (file: {s}, driver: {s})\n", .{ port.display_name, port.file_name, port.driver });
     }
 }
 
