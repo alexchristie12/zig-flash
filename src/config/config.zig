@@ -2,6 +2,7 @@ const std = @import("std");
 const json = std.json; // The config is in JSON format.
 const Allocator = std.mem.Allocator;
 const dbg = std.debug.print;
+const log = @import("../log/log.zig");
 
 const ConfigurationData = struct {
     general_config: GeneralConfig,
@@ -35,19 +36,22 @@ const ConfigError = union(enum) {
 pub fn get_config_data(fname: []const u8) ?[]u8 {
     const cwd = std.fs.cwd();
     const handle = cwd.openFile(fname, .{ .mode = .read_only }) catch {
-        std.debug.print("Could not find file to open, or could not open it!\n", .{});
+        log.log_err("Could not find file to open, or could not open it!", .{});
         return null;
     };
     defer handle.close();
+
     // Create a buffer, can store in memory... initially check the file size
     const stats = handle.stat() catch {
         @panic("Cannot get file stats, this is dangerous!");
     };
+
     if (stats.size > 5000) {
         // If the config file is larger than 5kiB, then it is suspiciously large,
         // and we will not handle it for now.
         return null;
     }
+
     var buffer: [5000]u8 = undefined;
     _ = handle.readAll(&buffer) catch {
         return null;
@@ -64,6 +68,7 @@ test "check if parsed breaks result when deinited for parseConfigData" {
     const allocator = std.testing.allocator;
     const configuration = parse_config_data(@constCast(EXAMPLE_CONFIG), allocator);
     defer configuration.?.deinit();
+
     try std.testing.expect(configuration != null);
 }
 
@@ -71,12 +76,15 @@ fn verify_config(config: ConfigurationData) bool {
     // We have a bunch of errors that are possible.
     var errors: [7]ConfigError = undefined;
     errors[0] = verify_general_config(config.general_config);
+
     for (config.i2c_config, 1..) |i2cc, idx| {
         errors[idx] = verify_I2C_config(i2cc);
     }
+
     for (config.adc_config, 3..) |adcc, idx| {
         errors[idx] = verify_ADC_config(adcc);
     }
+
     // TODO: Print out all of the errors
     return check_for_errors(&errors);
 }
@@ -84,28 +92,36 @@ fn verify_config(config: ConfigurationData) bool {
 fn verify_general_config(gen_config: GeneralConfig) ConfigError {
     // Name length must be less than 50 characters
     if (gen_config.name.len >= 50) return ConfigError{ .err = "General Config name is too long" };
+
     return ConfigError.good;
 }
 
+/// Verify an ADC config
 fn verify_ADC_config(adc_config: ADCConfig) ConfigError {
     if (adc_config.name.len >= 50) return ConfigError{ .err = "ADC Config name is too long, must be >=50 characters" };
+
     return ConfigError.good;
 }
 
+/// Verify an I2C configuration, only checks for the first error. If there are more errors,
+/// then these will not be detected.
 fn verify_I2C_config(i2c_config: I2CConfig) ConfigError {
     if ((i2c_config.sensor_type > 4) or (i2c_config.sensor_type == 0)) return ConfigError{ .err = "Invalid I2C Config Sensor type, must be 1, 2, or 3" };
+
     if (i2c_config.name.len >= 50) return ConfigError{ .err = "I2C Config name is too long, must be >= characters" };
+
     return ConfigError.good;
 }
 
 // Return false if an error if found, true if none are found
 fn check_for_errors(error_collection: []ConfigError) bool {
     if (error_collection.len == 0) return true;
+
     for (error_collection) |err| {
         switch (err) {
             ConfigError.good => continue,
             ConfigError.err => |msg| {
-                std.debug.print("{s}\n", .{msg});
+                log.log_warn("{s}\n", .{msg});
                 return false;
             },
         }
