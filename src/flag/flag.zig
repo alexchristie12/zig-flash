@@ -35,6 +35,7 @@ pub fn get_option() FlagParseError!FlashOption {
     var args = try std.process.argsWithAllocator(alloc);
     defer args.deinit();
     _ = args.next(); // We discard the program name
+
     while (args.next()) |arg| {
         // Check the arguement.
         if (FLAG_DEBUG) {
