@@ -1,6 +1,6 @@
 const std = @import("std");
-const flag = @import("flag/flag.zig");
-const parser = @import("config/config.zig");
+const flag = @import("flag.zig");
+const parser = @import("config.zig");
 
 pub fn main() !void {
     const stdout_file = std.io.getStdOut().writer();

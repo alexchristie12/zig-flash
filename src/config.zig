@@ -3,16 +3,51 @@ const json = std.json; // The config is in JSON format.
 const Allocator = std.mem.Allocator;
 const dbg = std.debug.print;
 const log = @import("./log.zig");
+const mem = std.mem;
 
 const ConfigurationData = struct {
     general_config: GeneralConfig,
     i2c_config: [2]I2CConfig,
     adc_config: [4]ADCConfig,
+
+    pub fn len(self: ConfigurationData) usize {
+        const gen_config_len = self.general_config.len();
+
+        var adc_configs_len = 0;
+        for (self.adc_config) |adcc| {
+            adc_configs_len += adcc.len();
+        }
+
+        var i2c_configs_len = 0;
+        for (self.i2c_config) |i2cc| {
+            i2c_configs_len += i2cc.len();
+        }
+
+        return gen_config_len + adc_configs_len + i2c_configs_len;
+    }
+
+    pub fn serialise(self: ConfigurationData, alloc: Allocator) ![]u8 {
+        // Serialise the general config. Calculate the length of the struct
+        var buffer = try alloc.alloc(u8, self.len());
+        // Copy in each config
+    }
 };
 
 const GeneralConfig = struct {
     name: []const u8,
     hardware_id: u64,
+
+    /// Returns the length of the config if it was stored in a u8 buffer.
+    pub fn len(self: GeneralConfig) usize {
+        return self.name.len + 8;
+    }
+
+    /// Serialise the config into a u8 buffer.
+    pub fn serialise(self: GeneralConfig, buffer: []u8) void {
+        const hardware_id_bytes = mem.asBytes(&self.hardware_id);
+        mem.copyForwards(u8, buffer, self.name);
+        mem.copyForwards(u8, buffer[self.name.len], hardware_id_bytes);
+    }
 };
 
 const ADCConfig = struct {
@@ -21,11 +56,43 @@ const ADCConfig = struct {
     min_val: f32,
     max_map_val: u16,
     min_map_val: u16,
+
+    /// Returns the length of the config if it was stored in a u8 buffer.
+    pub fn len(self: ADCConfig) usize {
+        return self.name.len + 4 + 4 + 2 + 2;
+    }
+
+    /// Serialise the config into a u8 buffer.
+    pub fn serialise(self: ADCConfig, buffer: []u8) void {
+        const max_val_bytes = mem.asBytes(&self.max_val); // length of 4
+        const min_val_bytes = mem.asBytes(&self.min_val); // length of 4
+        const max_map_val_bytes = mem.asBytes(&self.max_map_val); // length of 2
+        const min_map_val_bytes = mem.asBytes(&self.min_map_val); // length of 2
+
+        // Copy over the name
+        mem.copyForwards(u8, buffer, self.name);
+        // I don't know if this shit is going to work
+        mem.copyForwards(u8, buffer[self.name - 1 ..], max_val_bytes);
+        mem.copyForwards(u8, buffer[self.name + 3 ..], min_val_bytes);
+        mem.copyForwards(u8, buffer[self.name + 7 ..], max_map_val_bytes);
+        mem.copyForwards(u8, buffer[self.name + 9], min_map_val_bytes);
+    }
 };
 
 const I2CConfig = struct {
     name: []const u8,
     sensor_type: u8,
+
+    /// Returns the length of the config if it was stored in a u8 buffer.
+    pub fn len(self: I2CConfig) usize {
+        return self.name.len + 1;
+    }
+
+    /// Serialise the config into a u8 buffer.
+    pub fn serialise(self: I2CConfig, buffer: []u8) ![]u8 {
+        mem.copyForwards(u8, buffer, self.name);
+        buffer[self.name.len] = self.sensor_type;
+    }
 };
 
 const ConfigError = union(enum) {
@@ -59,6 +126,7 @@ pub fn get_config_data(fname: []const u8) ?[]u8 {
     return &buffer;
 }
 
+/// Parse the configuration file.
 fn parse_config_data(buffer: []u8, allocator: Allocator) ?std.json.Parsed(ConfigurationData) {
     const parsed = json.parseFromSlice(ConfigurationData, allocator, buffer, .{}) catch return null;
     return parsed;
@@ -72,6 +140,7 @@ test "check if parsed breaks result when deinited for parseConfigData" {
     try std.testing.expect(configuration != null);
 }
 
+/// Verify a configuration.
 fn verify_config(config: ConfigurationData) bool {
     // We have a bunch of errors that are possible.
     var errors: [7]ConfigError = undefined;
@@ -89,6 +158,7 @@ fn verify_config(config: ConfigurationData) bool {
     return check_for_errors(&errors);
 }
 
+/// Verify the general configuration
 fn verify_general_config(gen_config: GeneralConfig) ConfigError {
     // Name length must be less than 50 characters
     if (gen_config.name.len >= 50) return ConfigError{ .err = "General Config name is too long" };
